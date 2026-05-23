@@ -1,0 +1,111 @@
+:root{
+  --bg: #fffafc;
+  --card: #ffffff;
+  --text: #263238;
+  --muted: #6b6b6b;
+  --accent-start: #ffdeda;
+  --accent-end: #e6f7ff;
+  --pastel-1: #ffdede;
+  --pastel-2: #e6f7ff;
+}
+*{box-sizing:border-box}
+body{
+  font-family: 'Noto Sans JP', system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  margin:0;
+  background: linear-gradient(180deg,var(--accent-start),var(--accent-end));
+  color:var(--text);
+  line-height:1.6;
+}
+.container{
+  max-width:900px;
+  margin:0 auto;
+  padding:24px;
+}
+.site-header{
+  padding:18px 0 12px;
+  text-align:center;
+}
+.banner{max-width:100%;margin:0 auto 12px}
+.banner img{width:80%;height:auto;display:block;margin:0 auto;border-radius:12px;box-shadow:0 6px 18px rgba(38,50,56,0.06)}
+.site-title{
+  margin:0;
+  font-size:2rem;
+  letter-spacing:0.02em;
+}
+.site-sub{color:var(--muted);margin:6px 0 0}
+.hero{background:rgba(255,255,255,0.7);border-radius:14px;padding:28px;margin-bottom:20px;text-align:center}
+.hero-title{margin:0 0 8px;font-size:1.4rem}
+.hero-lead{margin:0 0 16px;color:var(--muted)}
+.cta{display:inline-block;background:#ff8fa3;color:white;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:700}
+.details{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:20px}
+.card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(38,50,56,0.06)}
+.card h3{margin:0 0 8px;font-size:1.05rem}
+.card p{margin:0;color:var(--muted)}
+.info{background:rgba(255,255,255,0.6);padding:16px;border-radius:12px}
+.schedule{margin-bottom:20px}
+.schedule h3{margin:0 0 6px}
+.schedule .muted{color:var(--muted);margin:0 0 10px}
+.table-wrap{overflow:auto;background:transparent;padding:8px;border-radius:10px}
+.timetable{width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden}
+.timetable thead{background:linear-gradient(90deg,var(--pastel-1),var(--pastel-2))}
+.timetable th,.timetable td{padding:12px 14px;text-align:left;border-bottom:1px solid rgba(38,50,56,0.06)}
+.timetable tr:last-child td{border-bottom:none}
+.time-col{width:140px;font-weight:700;color:var(--text)}
+.buttons{margin-top:12px}
+.extra-info{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(38,50,56,0.04);margin-bottom:16px}
+.extra-info h3{margin:0 0 8px}
+.extra-info p{margin:0;color:var(--muted)}
+.pricing{margin-bottom:18px}
+.pricing h3{margin:0 0 6px}
+.pricing .muted{margin:0 0 10px}
+.pricing-grid{display:flex;gap:12px;flex-wrap:wrap}
+.price-item{flex:1 1 220px;background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(38,50,56,0.04)}
+.price-item h4{margin:0 0 6px}
+.price{font-size:1.2rem;font-weight:700;margin:0 0 6px}
+.price-item .muted{margin:0;color:var(--muted)}
+.prize{margin-bottom:18px;background:linear-gradient(90deg,rgba(255,222,222,0.6),rgba(230,247,255,0.6));padding:14px;border-radius:10px;border-left:4px solid #ff8fa3}
+.prize h3{margin:0 0 6px}
+.prize p{margin:0;color:var(--muted)}
+.prize-media{display:flex;justify-content:center;margin:10px 0 12px}
+.prize-media img{max-width:336px;width:80%;height:auto;margin:0 auto;display:block;border-radius:10px;box-shadow:0 8px 24px rgba(38,50,56,0.08)}
+.topic{margin-top:12px}
+.topic-media{display:flex;justify-content:center;margin:8px 0}
+.topic-media img{max-width:294px;width:70%;height:auto;margin:0 auto;display:block;border-radius:10px;box-shadow:0 6px 18px rgba(38,50,56,0.06)}
+.video-link{display:inline-block;margin-top:8px;color:#0066cc;text-decoration:underline}
+.disclaimer{background:transparent;color:var(--muted);font-size:0.95rem;padding:10px 24px;border-top:1px solid rgba(38,50,56,0.04)}
+
+/* Timer styles and larger mobile buttons */
+.timer-display{font-size:2.2rem;font-weight:700;text-align:center;padding:14px;background:var(--card);border-radius:10px;box-shadow:0 6px 18px rgba(38,50,56,0.06);margin-bottom:8px}
+.buttons{display:flex;gap:12px;align-items:center}
+.buttons .secondary{flex:1;padding:12px 18px;font-size:1rem;border-radius:12px}
+
+@media (max-width:600px){
+  .buttons{flex-direction:column}
+  .buttons .secondary{width:100%;display:block;font-size:1.15rem;padding:16px}
+  .timer-display{font-size:2.6rem;padding:16px}
+}
+
+/* record form */
+.hidden{display:none}
+.record-form{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(38,50,56,0.04);margin-top:12px}
+.record-form h4{margin:0 0 8px}
+.record-form label{display:block;margin:8px 0}
+.record-form input,.record-form textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(38,50,56,0.08);font-size:1rem}
+.form-actions{display:flex;gap:8px;margin-top:8px}
+.record-list{margin-top:12px}
+.record{background:var(--card);padding:10px;border-radius:8px;margin-bottom:8px;box-shadow:0 4px 12px rgba(38,50,56,0.04)}
+.record .r-time{font-weight:700}
+.record .r-meta{color:var(--muted);font-size:0.95rem;margin-top:4px}
+.record .r-comment{margin-top:6px;color:var(--muted)}
+.serial-row{display:flex;gap:8px;align-items:center}
+.serial-row .serial-label{min-width:110px}
+.serial-row input[type="text"]{flex:1}
+.serial-enable{font-size:0.9rem;display:flex;align-items:center;gap:6px}
+.secondary{display:inline-block;margin-right:8px;padding:8px 14px;border-radius:8px;background:transparent;border:1px solid rgba(38,50,56,0.06);text-decoration:none;color:var(--text)}
+.site-footer{padding:18px 0;text-align:center;color:var(--muted);font-size:0.9rem}
+
+@media (max-width:480px){
+  .container{padding:16px}
+  .site-title{font-size:1.6rem}
+  .hero-title{font-size:1.2rem}
+}

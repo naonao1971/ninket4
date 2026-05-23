@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="240" viewBox="0 0 1200 240" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ffdede"/>
+      <stop offset="100%" stop-color="#e6f7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="240" rx="20" fill="url(#g)" />
+  <g font-family="Noto Sans JP, system-ui, -apple-system, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif" fill="#263238" font-weight="700">
+    <text x="60" y="110" font-size="48">にんケット４</text>
+    <text x="60" y="150" font-size="20" fill="#4f6368" font-weight="400">やさしい学びの交流イベント</text>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <defs>
+    <linearGradient id="gt" x1="0" x2="1">
+      <stop offset="0%" stop-color="#fff7ec"/>
+      <stop offset="100%" stop-color="#e8fff7"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" rx="12" fill="url(#gt)" />
+  <g fill="#263238" font-family="Noto Sans JP, sans-serif">
+    <rect x="60" y="60" width="360" height="240" rx="8" fill="#fff" stroke="#ffdede" stroke-width="3" />
+    <text x="60" y="340" font-size="20" font-weight="700">組立お題イメージ</text>
+    <text x="60" y="370" font-size="14" fill="#6b6b6b">NounishCNP メガネモデル（例）</text>
+  </g>
+</svg>
