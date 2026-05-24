@@ -100,7 +100,7 @@
           <p class="muted">下記は当日の参加に関する料金の目安です。</p>
           <div class="pricing-grid">
             <div class="price-item">
-              <h4>組立トライアル（時間制限3分）</h4>
+              <h4>組立トライアル（時間制限5分）</h4>
               <p class="price">¥200</p>
               <p class="muted">1回あたりの参加料金です。ナウンズメガネを１個組み立てタイムを競います。ブロック持ち帰り不要な場合は100円です。また追加100円で1回まで再チャレンジ可能です。</p>
             </div>
@@ -121,7 +121,7 @@
 
       <section class="info">
         <h3>タイムトライアル</h3>
-        <p>参加は簡単。以下から登録して開始してください。</p>
+        <p>参加は簡単。以下から登録して開始してください。制限時間は3分です。</p>
         <div class="timer">
           <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
           <div id="timerDisplay" class="timer-display" role="status" aria-live="polite">00:00.00</div>
@@ -292,11 +292,11 @@
         function update(){
           const now = Date.now();
           const elapsed = now - startTime;
-          if(elapsed >= 180000){
-            // 制限時間3分に到達 → 自動終了
+          if(elapsed >= 300000){
+            // 制限時間5分に到達 → 自動終了
             cancelAnimationFrame(rafId);
             running = false;
-            const formatted = formatTime(180000);
+            const formatted = formatTime(300000);
             display.textContent = formatted;
             colorTimerByRank(formatted);
             startBtn.disabled = false; stopBtn.disabled = true; startBtn.classList.remove('active');
