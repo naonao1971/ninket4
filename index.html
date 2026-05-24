@@ -135,8 +135,9 @@
           <input type="hidden" name="measuredTime" id="measuredTime">
           <div class="serial-row">
             <label class="serial-label">シリアルNo（必須）</label>
-            <input id="recSerial" name="serial" type="text" placeholder="シリアルを入力" disabled>
-            <label class="serial-enable"><input id="recSerialEnable" type="checkbox"> 編集可</label>
+            <input id="recSerial" name="serial" type="text" inputmode="numeric" pattern="\d{5}" maxlength="5" placeholder="例: 01234" autocomplete="off" disabled>
+            <input id="recSerialEnable" class="serial-checkbox" type="checkbox" aria-label="編集可" title="編集可">
+            <button type="button" id="qrScanBtn" class="secondary">QR読み取り</button>
           </div>
           <label>ニックネーム（必須）<br>
             <input id="recNick" name="nickname" type="text" required placeholder="表示名"></label>
@@ -162,6 +163,7 @@
     <section class="disclaimer container">
       <p><strong>注意：</strong>本イベントに展示するブロックアート作品は個人制作による非公式のファンメイド作品です。株式会社カワダ様の公式商品・公認商品ではありません。</p>
     </section>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script>
       (function(){
         const startBtn = document.getElementById('startBtn');
@@ -254,13 +256,19 @@
           // toggle serial editability
           if(recSerialEnable){ recSerialEnable.addEventListener('change', function(){ if(recSerial) recSerial.disabled = !this.checked; if(this.checked) recSerial.focus(); }); }
 
+          // enforce numeric-only input and limit length to 5
+          if(recSerial){
+            recSerial.addEventListener('input', function(){ const s = this.value.replace(/\D/g,'').slice(0,5); if(this.value !== s) this.value = s; });
+          }
+
           recordForm.addEventListener('submit', function(e){
             e.preventDefault();
             const nick = recNick.value.trim();
             if(!nick){ alert('ニックネームは必須です'); recNick.focus(); return; }
-            // enforce serial required: must have a value (either prefilled or entered)
+            // enforce serial required: must be exactly 5 digits
             const serialVal = recSerial ? recSerial.value.trim() : '';
             if(!serialVal){ alert('シリアルNoが未入力です。QRで読み取るか、チェックをONにして入力してください。'); if(recSerialEnable) recSerialEnable.focus(); return; }
+            if(!/^\d{5}$/.test(serialVal)){ alert('シリアルNoは5桁の数字で入力してください（例: 01234）。'); recSerial.focus(); return; }
 
             const rec = { time: measuredTimeInput.value || display.textContent, serial: serialVal, nickname: nick, xid: recXid.value.trim(), comment: recComment.value.trim(), created: Date.now() };
             try{ const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]'); arr.unshift(rec); localStorage.setItem('ninket_records', JSON.stringify(arr)); renderRecords(arr); }catch(err){ console.error(err); }
@@ -271,6 +279,63 @@
 
           cancelRecord.addEventListener('click', function(){ recordForm.classList.add('hidden'); });
         }
+
+        // QRスキャナ機能
+        const qrScanBtn = document.getElementById('qrScanBtn');
+        const qrModal = document.createElement('div');
+        qrModal.id = 'qrModal';
+        qrModal.className = 'qr-modal hidden';
+        qrModal.innerHTML = '<div class="qr-content"><video id="qrVideo" autoplay playsinline></video><canvas id="qrCanvas" class="hidden"></canvas><div class="qr-actions"><button id="qrClose" class="secondary">閉じる</button></div></div>';
+        document.body.appendChild(qrModal);
+        const qrVideo = document.getElementById('qrVideo');
+        const qrCanvas = document.getElementById('qrCanvas');
+        const qrClose = document.getElementById('qrClose');
+        let qrStream = null; let qrReqId = null;
+
+        async function startScanner(){
+          if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert('カメラにアクセスできません'); return; }
+          qrModal.classList.remove('hidden');
+          try{
+            qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            qrVideo.srcObject = qrStream;
+            qrVideo.play();
+            tick();
+          }catch(err){ console.error(err); alert('カメラを開始できませんでした: ' + err.message); qrModal.classList.add('hidden'); }
+        }
+
+        function stopScanner(){
+          if(qrReqId) cancelAnimationFrame(qrReqId);
+          qrReqId = null;
+          if(qrVideo){ qrVideo.pause(); qrVideo.srcObject = null; }
+          if(qrStream){ qrStream.getTracks().forEach(t=>t.stop()); qrStream = null; }
+          qrModal.classList.add('hidden');
+        }
+
+        function tick(){
+          if(qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA){ qrReqId = requestAnimationFrame(tick); return; }
+          const w = qrVideo.videoWidth; const h = qrVideo.videoHeight;
+          if(!w || !h){ qrReqId = requestAnimationFrame(tick); return; }
+          qrCanvas.width = w; qrCanvas.height = h; const ctx = qrCanvas.getContext('2d'); ctx.drawImage(qrVideo,0,0,w,h);
+          try{
+            const imgData = ctx.getImageData(0,0,w,h);
+            const code = jsQR(imgData.data, imgData.width, imgData.height);
+            if(code && code.data){
+              const matched = code.data.match(/(\d{5})/);
+              let val = '';
+              if(matched) val = matched[1]; else { const digits = code.data.replace(/\D/g,''); if(digits.length>=5) val = digits.slice(0,5); }
+              if(val){
+                if(recSerial){ recSerial.value = val; recSerial.disabled = false; }
+                if(recSerialEnable){ recSerialEnable.checked = true; }
+                stopScanner();
+                return;
+              }
+            }
+          }catch(e){ console.error(e); }
+          qrReqId = requestAnimationFrame(tick);
+        }
+
+        if(qrScanBtn){ qrScanBtn.addEventListener('click', function(){ startScanner(); }); }
+        if(qrClose){ qrClose.addEventListener('click', function(){ stopScanner(); }); }
 
         // initialize
         loadRecords();

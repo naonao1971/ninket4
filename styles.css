@@ -99,8 +99,24 @@ body{
 .record .r-comment{margin-top:6px;color:var(--muted)}
 .serial-row{display:flex;gap:8px;align-items:center}
 .serial-row .serial-label{min-width:110px}
-.serial-row input[type="text"]{flex:1}
+.serial-row input[type="text"]{
+  /* レイアウトに任せつつ、視認性のため最小幅を確保 */
+  flex: 1 1 auto;
+  min-width: 6ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .serial-enable{font-size:0.9rem;display:flex;align-items:center;gap:6px}
+/* Ensure the checkbox+text label stays inline inside the form (overrides record-form label rule) */
+.record-form .serial-enable{display:inline-flex;align-items:center;gap:6px;margin:0;padding:0}
+.serial-checkbox{margin-left:8px;align-self:center}
+@media (max-width:600px){
+  /* Keep serial row compact on mobile: label, short 5-digit input, and checkbox inline */
+  .serial-row{flex-direction:row;align-items:center;flex-wrap:nowrap;width:auto}
+  .serial-row .serial-label{min-width:unset;white-space:nowrap;margin-right:8px}
+  .serial-row input[type="text"]{flex:1;width:auto;max-width:none}
+  .serial-row .serial-enable{margin-top:0;margin-left:8px}
+}
 .secondary{display:inline-block;margin-right:8px;padding:8px 14px;border-radius:8px;background:transparent;border:1px solid rgba(38,50,56,0.06);text-decoration:none;color:var(--text)}
 .site-footer{padding:18px 0;text-align:center;color:var(--muted);font-size:0.9rem}
 
@@ -109,3 +125,12 @@ body{
   .site-title{font-size:1.6rem}
   .hero-title{font-size:1.2rem}
 }
+
+/* QR modal styles */
+.qr-modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1200}
+.qr-modal.hidden{display:none}
+.qr-modal .qr-content{background:var(--card);padding:12px;border-radius:10px;max-width:92vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:8px}
+.qr-modal video{width:min(560px,80vw);height:auto;border-radius:8px;background:black}
+.qr-modal .qr-actions{display:flex;gap:8px}
+.qr-modal .secondary{padding:8px 12px}
+.qr-modal canvas.hidden{display:none}
