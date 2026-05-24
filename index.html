@@ -237,8 +237,15 @@
         const adminPassError = document.getElementById('adminPassError');
         const adminPassOk = document.getElementById('adminPassOk');
         const adminPassCancel = document.getElementById('adminPassCancel');
-        // 管理者パスワード（.admin.js で設定）
-        const ADMIN_PASS = window.ADMIN_PASS || null;
+        // 管理者パスワード（.admin.js のSHA-256ハッシュで検証）
+        async function verifyAdminPass(input){
+          if(!window.ADMIN_PASS_HASH) return false;
+          try{
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+            const hex = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+            return hex === window.ADMIN_PASS_HASH;
+          }catch(e){ console.error(e); return false; }
+        }
         var pendingRec = null; var pendingOverwriteIdx = -1;
 
         if(!startBtn || !stopBtn || !display) return;
@@ -452,9 +459,10 @@
         if(sortByDateBtn){ sortByDateBtn.addEventListener('click', function(){ currentSort='date'; sortByDateBtn.classList.add('active'); if(sortByTimeBtn) sortByTimeBtn.classList.remove('active'); loadRecords(); }); }
 
         // 管理者パスワード確認の処理
-        if(adminPassOk){ adminPassOk.addEventListener('click', function(){
-          if(!ADMIN_PASS){ alert('管理者設定ファイル (.admin.js) が読み込まれていません'); return; }
-          if(adminPassInput.value === ADMIN_PASS){
+        if(adminPassOk){ adminPassOk.addEventListener('click', async function(){
+          if(!window.ADMIN_PASS_HASH){ alert('管理者設定ファイル (.admin.js) が読み込まれていません'); return; }
+          const ok = await verifyAdminPass(adminPassInput.value);
+          if(ok){
             try{
               const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
               if(pendingOverwriteIdx >= 0 && pendingOverwriteIdx < arr.length){
