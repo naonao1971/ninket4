@@ -184,6 +184,7 @@
         </div>
       </div>
     </div>
+    <script src=".admin.js" onerror="console.warn('admin config (.admin.js) not found')"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script>
       (function(){
@@ -236,8 +237,8 @@
         const adminPassError = document.getElementById('adminPassError');
         const adminPassOk = document.getElementById('adminPassOk');
         const adminPassCancel = document.getElementById('adminPassCancel');
-        // 管理者パスワード（この値を必要に応じて変更してください）
-        const ADMIN_PASS = 'admin1234';
+        // 管理者パスワード（.admin.js で設定）
+        const ADMIN_PASS = window.ADMIN_PASS || null;
         var pendingRec = null; var pendingOverwriteIdx = -1;
 
         if(!startBtn || !stopBtn || !display) return;
@@ -452,6 +453,7 @@
 
         // 管理者パスワード確認の処理
         if(adminPassOk){ adminPassOk.addEventListener('click', function(){
+          if(!ADMIN_PASS){ alert('管理者設定ファイル (.admin.js) が読み込まれていません'); return; }
           if(adminPassInput.value === ADMIN_PASS){
             try{
               const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
