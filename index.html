@@ -82,9 +82,9 @@
         </div>
       </section>
       <section class="card extra-info">
-        <h3>進め方やルールなど</h3>
-        <p>ワークショップはおひとりさま15分目安となります。お子さま連れは大歓迎です。予定数はAM5名様、PM5名様です。</p>
-        <p>タイムトライアルは、参加者が同じモデルを組み立てる時間を競うイベントです。正確さも重要ですが、速さも求められます。参加者は事前にモデルの組み立て方を学び、当日は実際に組み立てることでスキルを試すことができます。</p>
+        <h3>ナノブロック組立体験について</h3>
+        <p>組立ワークショップは。Nounsメガネをつくります。３つ組立て積み上げるとノグル三兄弟が出来上がります。組立時間はお人組様あたり15分が目安となります。お子さま連れのお客様は大歓迎です。予定数はAM5組、PM5組を予定してます。</p>
+        <p>タイムトライアルは、ナウンズメガネ１個の組立時間を競います。正確さも重要ですが、速さも求められます。制限時間は5分です。参加者は事前にモデルの組み立て方を学び、当日は実際に組み立てることでスキルを試すことができます。</p>
       </section>
       <section id="topic" class="topic card">
         <h3>組立お題</h3>
@@ -121,7 +121,7 @@
 
       <section class="info">
         <h3>タイムトライアル</h3>
-        <p>参加は簡単。以下から登録して開始してください。制限時間は3分です。</p>
+        <p>参加は簡単。以下から登録して開始してください。制限時間は5分です。</p>
         <div class="timer">
           <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
           <div id="timerDisplay" class="timer-display" role="status" aria-live="polite">00:00.00</div>
@@ -222,7 +222,6 @@
           recXid.addEventListener('blur',function(){ lookupXUser(this.value); });
           recXid.addEventListener('input',function(){ if(xidPreview) xidPreview.className='xid-preview hidden'; });
         }
-        const recComment = document.getElementById('recComment');
         const recSerial = document.getElementById('recSerial');
         const recSerialEnable = document.getElementById('recSerialEnable');
         const measuredTimeInput = document.getElementById('measuredTime');
@@ -384,19 +383,35 @@
         function padZ(n){ return String(n).padStart(2,'0'); }
         function formatDate(ts){ if(!ts) return ''; var d=new Date(ts); return d.getFullYear()+'/'+padZ(d.getMonth()+1)+'/'+padZ(d.getDate())+' '+padZ(d.getHours())+':'+padZ(d.getMinutes()); }
 
-        function getSortedRecords(){
-          try{
-            var arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
-            if(currentSort==='time'){
-              arr.sort(function(a,b){ var ta=timeToMs(a.time),tb=timeToMs(b.time); if(ta===null&&tb===null) return 0; if(ta===null) return 1; if(tb===null) return -1; return ta-tb; });
-            } else {
-              arr.sort(function(a,b){ return (a.created||0)-(b.created||0); });
-            }
-            return arr;
-          }catch(e){ return []; }
+        function sortRecords(arr){
+          var a = (arr||[]).slice();
+          if(currentSort==='time'){
+            a.sort(function(a,b){ var ta=timeToMs(a.time),tb=timeToMs(b.time); if(ta===null&&tb===null) return 0; if(ta===null) return 1; if(tb===null) return -1; return ta-tb; });
+          } else {
+            a.sort(function(a,b){ return (a.created||0)-(b.created||0); });
+          }
+          return a;
         }
 
-        function loadRecords(){ renderRecords(getSortedRecords()); }
+        function getSortedRecords(){
+          try{ return sortRecords(JSON.parse(localStorage.getItem('ninket_records')||'[]')); }catch(e){ return []; }
+        }
+
+        function loadRecords(){
+          if(window.GAS_URL){
+            fetch(window.GAS_URL, {cache:'no-store'})
+              .then(function(r){ return r.json(); })
+              .then(function(d){
+                if(d.records){
+                  try{ localStorage.setItem('ninket_records', JSON.stringify(d.records)); }catch(e){}
+                  renderRecords(sortRecords(d.records));
+                }
+              })
+              .catch(function(){ renderRecords(getSortedRecords()); });
+          } else {
+            renderRecords(getSortedRecords());
+          }
+        }
 
         function renderRecords(arr){ if(!recordList) return; if(!arr||!arr.length){ recordList.innerHTML='<p class="muted">まだ記録がありません。</p>'; return; }
           // ランク（時間昇順での順位）を計算
@@ -422,6 +437,19 @@
           recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>登録日時</th><th>シリアルNo</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
         }
 
+        function showDuplicateModal(rec, idx){
+          pendingRec = rec; pendingOverwriteIdx = (idx !== undefined ? idx : -1);
+          adminPassInput.value = ''; adminPassError.classList.add('hidden');
+          adminModal.classList.remove('hidden'); adminPassInput.focus();
+        }
+
+        function afterFormSave(){
+          recordForm.classList.add('hidden'); recordForm.reset();
+          if(recSerial) recSerial.disabled = true; if(recSerialEnable) recSerialEnable.checked = false;
+          if(xidPreview) xidPreview.className = 'xid-preview hidden';
+          loadRecords();
+        }
+
         if(recordForm){
           // toggle serial editability
           if(recSerialEnable){ recSerialEnable.addEventListener('change', function(){ if(recSerial) recSerial.disabled = !this.checked; if(this.checked) recSerial.focus(); }); }
@@ -440,25 +468,37 @@
             if(!serialVal){ alert('シリアルNoが未入力です。QRで読み取るか、チェックをONにして入力してください。'); if(recSerialEnable) recSerialEnable.focus(); return; }
             if(!/^\d{10}$/.test(serialVal)){ alert('シリアルNoは10桁の数字で入力してください（例: 0123456789）。'); recSerial.focus(); return; }
 
-            const rec = { time: measuredTimeInput.value || display.textContent, serial: serialVal, nickname: nick, xid: recXid.value.trim(), comment: recComment.value.trim(), created: Date.now() };
-            try{
-              const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
-              const existIdx = arr.findIndex(function(r){ return r.serial === serialVal; });
-              if(existIdx !== -1){
-                // 重複シリアル → 管理者パスワード確認
-                pendingRec = rec; pendingOverwriteIdx = existIdx;
-                adminPassInput.value = ''; adminPassError.classList.add('hidden');
-                adminModal.classList.remove('hidden'); adminPassInput.focus();
-                return;
-              }
-              arr.unshift(rec); localStorage.setItem('ninket_records', JSON.stringify(arr)); loadRecords();
-            }catch(err){ console.error(err); }
-            recordForm.classList.add('hidden'); recordForm.reset();
-            // after reset, keep serial disabled
-            if(recSerial) recSerial.disabled = true; if(recSerialEnable) recSerialEnable.checked = false;
+            const rec = { time: measuredTimeInput.value || display.textContent, serial: serialVal, nickname: nick, xid: recXid.value.trim(), created: Date.now() };
+            if(window.GAS_URL){
+              fetch(window.GAS_URL, {method:'POST', body:JSON.stringify({action:'add',record:rec})})
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                  if(d.duplicate){ showDuplicateModal(rec); return; }
+                  if(d.success){ afterFormSave(); } else { alert('登録に失敗しました: '+(d.error||'')); }
+                })
+                .catch(function(e){ alert('通信エラー: '+e.message); });
+            } else {
+              try{
+                const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+                const existIdx = arr.findIndex(function(r){ return r.serial === serialVal; });
+                if(existIdx !== -1){ showDuplicateModal(rec, existIdx); return; }
+                arr.unshift(rec); localStorage.setItem('ninket_records', JSON.stringify(arr));
+              }catch(err){ console.error(err); }
+              afterFormSave();
+            }
           });
 
-          cancelRecord.addEventListener('click', function(){ recordForm.classList.add('hidden'); });
+          cancelRecord.addEventListener('click', function(){
+            recordForm.classList.add('hidden');
+            recordForm.reset();
+            // シリアル入力を無効化に戻す
+            if(recSerial){ recSerial.disabled = true; recSerial.style.boxShadow = ''; }
+            if(recSerialEnable) recSerialEnable.checked = false;
+            // XIDプレビューを非表示
+            if(xidPreview) xidPreview.className = 'xid-preview hidden';
+            // タイマー表示を初期化
+            if(!running){ display.textContent = '00:00.00'; display.style.color = ''; display.style.boxShadow = ''; display.style.transition = ''; }
+          });
         }
 
         // ソートボタン
@@ -472,16 +512,22 @@
           if(!window.ADMIN_PASS_HASH){ alert('管理者設定ファイル (.admin.js) が読み込まれていません'); return; }
           const ok = await verifyAdminPass(adminPassInput.value);
           if(ok){
-            try{
-              const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
-              if(pendingOverwriteIdx >= 0 && pendingOverwriteIdx < arr.length){
-                arr[pendingOverwriteIdx] = pendingRec;
-              } else { arr.unshift(pendingRec); }
-              localStorage.setItem('ninket_records', JSON.stringify(arr)); loadRecords();
-            }catch(e){ console.error(e); }
             adminModal.classList.add('hidden');
-            recordForm.classList.add('hidden'); recordForm.reset();
-            if(recSerial) recSerial.disabled = true; if(recSerialEnable) recSerialEnable.checked = false;
+            if(window.GAS_URL){
+              fetch(window.GAS_URL, {method:'POST', body:JSON.stringify({action:'overwrite',record:pendingRec})})
+                .then(function(r){ return r.json(); })
+                .then(function(d){ if(d.success){ afterFormSave(); } else { alert('上書きに失敗しました: '+(d.error||'')); } })
+                .catch(function(e){ alert('通信エラー: '+e.message); });
+            } else {
+              try{
+                const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+                if(pendingOverwriteIdx >= 0 && pendingOverwriteIdx < arr.length){
+                  arr[pendingOverwriteIdx] = pendingRec;
+                } else { arr.unshift(pendingRec); }
+                localStorage.setItem('ninket_records', JSON.stringify(arr));
+              }catch(e){ console.error(e); }
+              afterFormSave();
+            }
             pendingRec = null; pendingOverwriteIdx = -1;
           } else {
             adminPassError.classList.remove('hidden');
