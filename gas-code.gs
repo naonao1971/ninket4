@@ -95,6 +95,18 @@ function doPost(e) {
       return jsonOut({ success: true });
     }
 
+    // --- 物理削除 ---
+    if (data.action === 'delete') {
+      var values = sheet.getDataRange().getValues();
+      for (var i = 1; i < values.length; i++) {
+        if (String(values[i][1]) === String(data.serial)) {
+          sheet.deleteRow(i + 1);
+          return jsonOut({ success: true });
+        }
+      }
+      return jsonOut({ error: 'Not found' });
+    }
+
     return jsonOut({ error: 'Unknown action: ' + data.action });
   } catch (err) {
     return jsonOut({ error: err.toString() });

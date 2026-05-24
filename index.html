@@ -172,8 +172,8 @@
     </section>
     <div id="adminModal" class="admin-modal hidden" role="dialog" aria-modal="true">
       <div class="admin-modal-content">
-        <h4>上書き確認</h4>
-        <p>このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。</p>
+        <h4 id="adminModalTitle">上書き確認</h4>
+        <p id="adminModalDesc">このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。</p>
         <input type="password" id="adminPassInput" placeholder="パスワード" autocomplete="new-password">
         <p id="adminPassError" class="admin-pass-error hidden">パスワードが違います</p>
         <div class="admin-modal-actions">
@@ -234,6 +234,8 @@
         const adminPassError = document.getElementById('adminPassError');
         const adminPassOk = document.getElementById('adminPassOk');
         const adminPassCancel = document.getElementById('adminPassCancel');
+        const adminModalTitle = document.getElementById('adminModalTitle');
+        const adminModalDesc = document.getElementById('adminModalDesc');
         // 管理者パスワード（.admin.js のSHA-256ハッシュで検証）
         async function verifyAdminPass(input){
           if(!window.ADMIN_PASS_HASH) return false;
@@ -243,7 +245,7 @@
             return hex === window.ADMIN_PASS_HASH;
           }catch(e){ console.error(e); return false; }
         }
-        var pendingRec = null; var pendingOverwriteIdx = -1;
+        var pendingRec = null; var pendingOverwriteIdx = -1; var pendingAction = 'overwrite';
 
         if(!startBtn || !stopBtn || !display) return;
         let startTime = 0; let rafId = null; let running = false;
@@ -432,13 +434,28 @@
               +'<td>'+escapeHTML(r.nickname||'')+'</td>'
               +'<td class="r-date">'+escapeHTML(formatDate(r.created))+'</td>'
               +'<td class="r-serial">'+escapeHTML(r.serial||'')+'</td>'
+              +'<td class="r-del"><input type="checkbox" class="del-chk" data-serial="'+escapeHTML(r.serial||'')+'" title="削除"></td>'
               +'</tr>';
           }).join('');
-          recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>登録日時</th><th>シリアルNo</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+          recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>登録日時</th><th>シリアルNo</th><th class="r-del">削除</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
         }
 
         function showDuplicateModal(rec, idx){
+          pendingAction = 'overwrite';
           pendingRec = rec; pendingOverwriteIdx = (idx !== undefined ? idx : -1);
+          if(adminModalTitle) adminModalTitle.textContent = '上書き確認';
+          if(adminModalDesc) adminModalDesc.innerHTML = 'このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。';
+          if(adminPassOk) adminPassOk.textContent = '上書きする';
+          adminPassInput.value = ''; adminPassError.classList.add('hidden');
+          adminModal.classList.remove('hidden'); adminPassInput.focus();
+        }
+
+        function showDeleteModal(serial){
+          pendingAction = 'delete';
+          pendingRec = {serial: serial}; pendingOverwriteIdx = -1;
+          if(adminModalTitle) adminModalTitle.textContent = '削除確認';
+          if(adminModalDesc) adminModalDesc.innerHTML = 'シリアルNo: <strong>'+escapeHTML(serial)+'</strong> の記録を削除します。<br>管理者パスワードを入力してください。';
+          if(adminPassOk) adminPassOk.textContent = '削除する';
           adminPassInput.value = ''; adminPassError.classList.add('hidden');
           adminModal.classList.remove('hidden'); adminPassInput.focus();
         }
@@ -513,29 +530,55 @@
           const ok = await verifyAdminPass(adminPassInput.value);
           if(ok){
             adminModal.classList.add('hidden');
-            if(window.GAS_URL){
-              fetch(window.GAS_URL, {method:'POST', body:JSON.stringify({action:'overwrite',record:pendingRec})})
-                .then(function(r){ return r.json(); })
-                .then(function(d){ if(d.success){ afterFormSave(); } else { alert('上書きに失敗しました: '+(d.error||'')); } })
-                .catch(function(e){ alert('通信エラー: '+e.message); });
+            const action = pendingAction;
+            const rec = pendingRec;
+            const idx = pendingOverwriteIdx;
+            pendingAction = 'overwrite'; pendingRec = null; pendingOverwriteIdx = -1;
+            if(adminModalTitle) adminModalTitle.textContent = '上書き確認';
+            if(adminModalDesc) adminModalDesc.innerHTML = 'このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。';
+            if(adminPassOk) adminPassOk.textContent = '上書きする';
+            if(action === 'delete'){
+              const serial = rec ? rec.serial : null;
+              if(!serial){ loadRecords(); return; }
+              if(window.GAS_URL){
+                fetch(window.GAS_URL, {method:'POST', body:JSON.stringify({action:'delete',serial:serial})})
+                  .then(function(r){ return r.json(); })
+                  .then(function(d){ if(d.success){ loadRecords(); } else { alert('削除に失敗しました: '+(d.error||'')); } })
+                  .catch(function(e){ alert('通信エラー: '+e.message); });
+              } else {
+                try{
+                  var arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+                  arr = arr.filter(function(r){ return r.serial !== serial; });
+                  localStorage.setItem('ninket_records', JSON.stringify(arr));
+                }catch(e){ console.error(e); }
+                loadRecords();
+              }
             } else {
-              try{
-                const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
-                if(pendingOverwriteIdx >= 0 && pendingOverwriteIdx < arr.length){
-                  arr[pendingOverwriteIdx] = pendingRec;
-                } else { arr.unshift(pendingRec); }
-                localStorage.setItem('ninket_records', JSON.stringify(arr));
-              }catch(e){ console.error(e); }
-              afterFormSave();
+              if(window.GAS_URL){
+                fetch(window.GAS_URL, {method:'POST', body:JSON.stringify({action:'overwrite',record:rec})})
+                  .then(function(r){ return r.json(); })
+                  .then(function(d){ if(d.success){ afterFormSave(); } else { alert('上書きに失敗しました: '+(d.error||'')); } })
+                  .catch(function(e){ alert('通信エラー: '+e.message); });
+              } else {
+                try{
+                  const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+                  if(idx >= 0 && idx < arr.length){ arr[idx] = rec; } else { arr.unshift(rec); }
+                  localStorage.setItem('ninket_records', JSON.stringify(arr));
+                }catch(e){ console.error(e); }
+                afterFormSave();
+              }
             }
-            pendingRec = null; pendingOverwriteIdx = -1;
           } else {
             adminPassError.classList.remove('hidden');
             adminPassInput.value = ''; adminPassInput.focus();
           }
         }); }
         if(adminPassCancel){ adminPassCancel.addEventListener('click', function(){
-          adminModal.classList.add('hidden'); pendingRec = null; pendingOverwriteIdx = -1;
+          adminModal.classList.add('hidden');
+          pendingRec = null; pendingOverwriteIdx = -1; pendingAction = 'overwrite';
+          if(adminModalTitle) adminModalTitle.textContent = '上書き確認';
+          if(adminModalDesc) adminModalDesc.innerHTML = 'このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。';
+          if(adminPassOk) adminPassOk.textContent = '上書きする';
         }); }
 
         // QRスキャナ機能
@@ -641,6 +684,14 @@
         }
         window.addEventListener('resize', function(){ requestAnimationFrame(adjustQRWidth); });
         window.addEventListener('orientationchange', function(){ setTimeout(adjustQRWidth,200); });
+
+        // 削除チェックボックスのイベント委任
+        if(recordList){ recordList.addEventListener('change', function(e){
+          var cb = e.target;
+          if(!cb.classList.contains('del-chk')) return;
+          cb.checked = false; // 即座にチェックを外す（削除確認後に一覧更新）
+          showDeleteModal(cb.dataset.serial);
+        }); }
 
         // initialize
         loadRecords();

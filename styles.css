@@ -131,6 +131,8 @@ body{
 .record-table .r-time{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .record-table .r-rank{white-space:nowrap}
 .record-table .r-serial{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:0.85rem;color:var(--muted)}
+.record-table .r-del{width:2.5rem;text-align:center;padding:4px 6px}
+.del-chk{cursor:pointer;width:1.1em;height:1.1em;accent-color:#e44;vertical-align:middle}
 .record-table .r-date{white-space:nowrap;font-size:0.82rem;color:var(--muted)}
 .record-table .r-comment{max-width:180px;word-break:break-word}
 .record-table .r-avatar{width:40px;padding:4px 6px;vertical-align:middle;text-align:center}
