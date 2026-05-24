@@ -145,3 +145,4 @@ input[aria-required="true"], textarea[aria-required="true"]{
 .qr-modal .qr-actions{display:flex;gap:8px}
 .qr-modal .secondary{padding:8px 12px}
 .qr-modal canvas.hidden{display:none}
+.qr-status{margin:4px 0 0;font-size:0.9rem;color:var(--muted);text-align:center}

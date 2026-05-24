@@ -289,7 +289,7 @@
         const qrModal = document.createElement('div');
         qrModal.id = 'qrModal';
         qrModal.className = 'qr-modal hidden';
-        qrModal.innerHTML = '<div class="qr-content"><video id="qrVideo" autoplay playsinline></video><canvas id="qrCanvas" class="hidden"></canvas><div class="qr-actions"><button id="qrClose" class="secondary">閉じる</button></div></div>';
+        qrModal.innerHTML = '<div class="qr-content"><video id="qrVideo" autoplay playsinline></video><canvas id="qrCanvas" class="hidden"></canvas><p id="qrStatus" class="qr-status">QRコードをカメラに向けてください</p><div class="qr-actions"><button id="qrClose" class="secondary">閉じる</button></div></div>';
         document.body.appendChild(qrModal);
         const qrVideo = document.getElementById('qrVideo');
         const qrCanvas = document.getElementById('qrCanvas');
@@ -321,34 +321,49 @@
 
         function handleDetected(data){
           if(!data) return false;
-          const matched = String(data).match(/(\d{5})/);
-          let val = '';
-          if(matched) val = matched[1]; else { const digits = String(data).replace(/\D/g,''); if(digits.length>=5) val = digits.slice(0,5); }
-          if(val){ if(recSerial){ recSerial.value = val; recSerial.disabled = false; } if(recSerialEnable){ recSerialEnable.checked = true; } stopScanner(); return true; }
-          return false;
+          const raw = String(data).trim();
+          if(!raw) return false;
+          // 5桁の数字を優先、なければ先頭から最大5文字を設定
+          const matched = raw.match(/(\d{5})/);
+          const val = matched ? matched[1] : raw.slice(0, 5);
+          if(recSerial){
+            recSerial.value = val;
+            recSerial.disabled = false;
+            // 視覚フィードバック（緑色フラッシュ）
+            recSerial.style.transition = 'box-shadow 0.2s';
+            recSerial.style.boxShadow = '0 0 0 3px rgba(40,180,80,0.6)';
+            setTimeout(function(){ recSerial.style.boxShadow = ''; }, 1000);
+          }
+          if(recSerialEnable){ recSerialEnable.checked = true; }
+          stopScanner();
+          return true;
         }
 
         function tick(){
-          if(!qrVideo) return;
-          if(qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA){ qrReqId = requestAnimationFrame(tick); return; }
+          if(!qrVideo || !qrStream) return;
+          if(qrVideo.readyState < qrVideo.HAVE_ENOUGH_DATA){ qrReqId = requestAnimationFrame(tick); return; }
 
-          // If BarcodeDetector is available, try it first (faster/more reliable on supported browsers)
+          // BarcodeDetector（Chromeなどで高精度）
           if(barcodeDetector){
-            barcodeDetector.detect(qrVideo).then(codes=>{
+            barcodeDetector.detect(qrVideo).then(function(codes){
+              if(!qrStream) return;
               if(codes && codes.length){
-                for(const c of codes){ if(c && c.rawValue && handleDetected(c.rawValue)) return; }
+                for(var c of codes){ if(c && c.rawValue && handleDetected(c.rawValue)) return; }
               }
               qrReqId = requestAnimationFrame(tick);
-            }).catch(err=>{ console.debug('BarcodeDetector error',err); qrReqId = requestAnimationFrame(tick); });
+            }).catch(function(err){ console.debug('BarcodeDetector error',err); barcodeDetector=null; qrReqId = requestAnimationFrame(tick); });
             return;
           }
 
-          const w = qrVideo.videoWidth; const h = qrVideo.videoHeight;
+          // jsQRフォールバック（inversionAttemptsBoth で精度向上）
+          var w = qrVideo.videoWidth; var h = qrVideo.videoHeight;
           if(!w || !h){ qrReqId = requestAnimationFrame(tick); return; }
-          qrCanvas.width = w; qrCanvas.height = h; const ctx = qrCanvas.getContext('2d'); ctx.drawImage(qrVideo,0,0,w,h);
+          qrCanvas.width = w; qrCanvas.height = h;
+          var ctx = qrCanvas.getContext('2d');
+          ctx.drawImage(qrVideo, 0, 0, w, h);
           try{
-            const imgData = ctx.getImageData(0,0,w,h);
-            const code = jsQR(imgData.data, imgData.width, imgData.height);
+            var imgData = ctx.getImageData(0, 0, w, h);
+            var code = jsQR(imgData.data, imgData.width, imgData.height, {inversionAttempts:'attemptBoth'});
             if(code && code.data){ if(handleDetected(code.data)) return; }
           }catch(e){ console.error(e); }
           qrReqId = requestAnimationFrame(tick);
