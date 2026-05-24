@@ -292,6 +292,17 @@
         function update(){
           const now = Date.now();
           const elapsed = now - startTime;
+          if(elapsed >= 180000){
+            // 制限時間3分に到達 → 自動終了
+            cancelAnimationFrame(rafId);
+            running = false;
+            const formatted = formatTime(180000);
+            display.textContent = formatted;
+            colorTimerByRank(formatted);
+            startBtn.disabled = false; stopBtn.disabled = true; startBtn.classList.remove('active');
+            showForm(formatted);
+            return;
+          }
           display.textContent = formatTime(elapsed);
           rafId = requestAnimationFrame(update);
         }
