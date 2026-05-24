@@ -102,7 +102,7 @@
             <div class="price-item">
               <h4>組立トライアル（時間制限3分）</h4>
               <p class="price">¥200</p>
-              <p class="muted">1回あたりの参加料金です。ナウンズメガネを１個組み立てタイムを競います。追加100円で1回まで再チャレンジ可能です。</p>
+              <p class="muted">1回あたりの参加料金です。ナウンズメガネを１個組み立てタイムを競います。ブロック持ち帰り不要な場合は100円です。また追加100円で1回まで再チャレンジ可能です。</p>
             </div>
             <div class="price-item">
               <h4>組立体験ワークショップ（想定時間15分）</h4>
@@ -147,8 +147,6 @@
           <label>XのユーザID（任意）<br>
             <input id="recXid" name="xid" type="text" placeholder="@username" autocomplete="off"></label>
           <div id="xidPreview" class="xid-preview hidden"></div>
-          <label>コメント（任意）<br>
-            <textarea id="recComment" name="comment" rows="3" placeholder="一言メモ"></textarea></label>
           <div class="form-actions">
             <button type="submit" class="secondary">登録する</button>
             <button type="button" id="cancelRecord" class="secondary">キャンセル</button>
@@ -406,11 +404,11 @@
               +'<td class="r-time">'+escapeHTML(r.time||'')+'</td>'
               +avatarCell
               +'<td>'+escapeHTML(r.nickname||'')+'</td>'
-              +'<td class="r-comment">'+escapeHTML(r.comment||'')+'</td>'
               +'<td class="r-date">'+escapeHTML(formatDate(r.created))+'</td>'
+              +'<td class="r-serial">'+escapeHTML(r.serial||'')+'</td>'
               +'</tr>';
           }).join('');
-          recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>コメント</th><th>登録日時</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+          recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>登録日時</th><th>シリアルNo</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
         }
 
         if(recordForm){
