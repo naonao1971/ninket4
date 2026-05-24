@@ -102,7 +102,7 @@
             <div class="price-item">
               <h4>組立トライアル（時間制限3分）</h4>
               <p class="price">¥200</p>
-              <p class="muted">1回あたりの参加料金です。ナウンズメガネを１個組み立てタイムを競います。</p>
+              <p class="muted">1回あたりの参加料金です。ナウンズメガネを１個組み立てタイムを競います。追加100円で1回まで再チャレンジ可能です。</p>
             </div>
             <div class="price-item">
               <h4>組立体験ワークショップ（想定時間15分）</h4>
@@ -123,6 +123,7 @@
         <h3>タイムトライアル</h3>
         <p>参加は簡単。以下から登録して開始してください。</p>
         <div class="timer">
+          <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
           <div id="timerDisplay" class="timer-display" role="status" aria-live="polite">00:00.00</div>
         </div>
         <div class="buttons">
@@ -135,7 +136,7 @@
           <input type="hidden" name="measuredTime" id="measuredTime">
           <div class="serial-row">
             <label class="serial-label">シリアルNo <span class="required">＊</span></label>
-            <input id="recSerial" name="serial" type="text" inputmode="numeric" pattern="\d{5}" maxlength="5" placeholder="例: 01234" autocomplete="off" disabled aria-required="true">
+            <input id="recSerial" name="serial" type="text" inputmode="numeric" pattern="\d{10}" maxlength="10" placeholder="例: 0123456789" autocomplete="off" disabled aria-required="true">
             <label class="serial-checkbox-label"><input id="recSerialEnable" class="serial-checkbox" type="checkbox" aria-label="編集可" title="編集可"> 編集</label>
           </div>
           <div class="qr-full-wrap">
@@ -144,7 +145,8 @@
           <label>ニックネーム <span class="required">＊</span><br>
             <input id="recNick" name="nickname" type="text" required placeholder="表示名" aria-required="true"></label>
           <label>XのユーザID（任意）<br>
-            <input id="recXid" name="xid" type="text" placeholder="@username"></label>
+            <input id="recXid" name="xid" type="text" placeholder="@username" autocomplete="off"></label>
+          <div id="xidPreview" class="xid-preview hidden"></div>
           <label>コメント（任意）<br>
             <textarea id="recComment" name="comment" rows="3" placeholder="一言メモ"></textarea></label>
           <div class="form-actions">
@@ -153,6 +155,11 @@
           </div>
         </form>
 
+        <div class="records-sort-bar">
+          <span class="sort-label">並び替え：</span>
+          <button type="button" id="sortByTime" class="sort-btn active">記録順</button>
+          <button type="button" id="sortByDate" class="sort-btn">登録日時順</button>
+        </div>
         <div id="recordList" class="record-list"></div>
       </section>
     </main>
@@ -165,6 +172,18 @@
     <section class="disclaimer container">
       <p><strong>注意：</strong>本イベントに展示するブロックアート作品は個人制作による非公式のファンメイド作品です。株式会社カワダ様の公式商品・公認商品ではありません。</p>
     </section>
+    <div id="adminModal" class="admin-modal hidden" role="dialog" aria-modal="true">
+      <div class="admin-modal-content">
+        <h4>上書き確認</h4>
+        <p>このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。</p>
+        <input type="password" id="adminPassInput" placeholder="パスワード" autocomplete="new-password">
+        <p id="adminPassError" class="admin-pass-error hidden">パスワードが違います</p>
+        <div class="admin-modal-actions">
+          <button type="button" id="adminPassOk">上書きする</button>
+          <button type="button" id="adminPassCancel" class="secondary">キャンセル</button>
+        </div>
+      </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script>
       (function(){
@@ -174,6 +193,36 @@
         const recordForm = document.getElementById('recordForm');
         const recNick = document.getElementById('recNick');
         const recXid = document.getElementById('recXid');
+        const xidPreview = document.getElementById('xidPreview');
+
+        function lookupXUser(raw){
+          if(!xidPreview) return;
+          const username = String(raw).replace(/^@/,'').trim();
+          if(!username){ xidPreview.className='xid-preview hidden'; return; }
+          if(!/^[a-zA-Z0-9_]{1,15}$/.test(username)){
+            xidPreview.innerHTML='<span>形式エラー：半角英数字・アンダースコアのみ、最大15文字</span>';
+            xidPreview.className='xid-preview xid-error'; return;
+          }
+          xidPreview.innerHTML='<span class="xid-loading">確認中...</span>';
+          xidPreview.className='xid-preview';
+          var img=new Image();
+          img.onload=function(){
+            xidPreview.innerHTML=
+              '<img src="https://unavatar.io/x/'+encodeURIComponent(username)+'" alt="'+escapeHTML(username)+'" class="xid-avatar">'+
+              '<div class="xid-info"><a href="https://x.com/'+encodeURIComponent(username)+'" target="_blank" rel="noopener noreferrer">@'+escapeHTML(username)+'</a>'+
+              '<span class="xid-hint">プロフィールを確認↗</span></div>';
+            xidPreview.className='xid-preview xid-found';
+          };
+          img.onerror=function(){
+            xidPreview.innerHTML='<span>プロフィール画像を取得できませんでした</span>';
+            xidPreview.className='xid-preview xid-error';
+          };
+          img.src='https://unavatar.io/x/'+encodeURIComponent(username);
+        }
+        if(recXid){
+          recXid.addEventListener('blur',function(){ lookupXUser(this.value); });
+          recXid.addEventListener('input',function(){ if(xidPreview) xidPreview.className='xid-preview hidden'; });
+        }
         const recComment = document.getElementById('recComment');
         const recSerial = document.getElementById('recSerial');
         const recSerialEnable = document.getElementById('recSerialEnable');
@@ -181,6 +230,15 @@
         const measuredTimeLabel = recordForm ? recordForm.querySelector('.measured-time') : null;
         const cancelRecord = document.getElementById('cancelRecord');
         const recordList = document.getElementById('recordList');
+        // 管理者パスワードモーダル
+        const adminModal = document.getElementById('adminModal');
+        const adminPassInput = document.getElementById('adminPassInput');
+        const adminPassError = document.getElementById('adminPassError');
+        const adminPassOk = document.getElementById('adminPassOk');
+        const adminPassCancel = document.getElementById('adminPassCancel');
+        // 管理者パスワード（この値を必要に応じて変更してください）
+        const ADMIN_PASS = 'admin1234';
+        var pendingRec = null; var pendingOverwriteIdx = -1;
 
         if(!startBtn || !stopBtn || !display) return;
         let startTime = 0; let rafId = null; let running = false;
@@ -191,6 +249,38 @@
           const seconds = totalSec % 60;
           const centi = Math.floor((ms % 1000)/10);
           return String(minutes).padStart(2,'0') + ':' + String(seconds).padStart(2,'0') + '.' + String(centi).padStart(2,'0');
+        }
+
+        function timeToMs(str){
+          var m = String(str||'').match(/^(\d+):(\d+)\.(\d+)$/);
+          if(!m) return null;
+          return (parseInt(m[1])*60 + parseInt(m[2]))*1000 + parseInt(m[3])*10;
+        }
+
+        function colorTimerByRank(newTimeStr){
+          // 色をリセット
+          display.style.color=''; display.style.boxShadow=''; display.style.transition='';
+          try{
+            var arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+            if(!arr.length) return; // 記録なしは色なし
+            var newMs = timeToMs(newTimeStr);
+            if(newMs===null) return;
+            var times = arr.map(function(r){ return timeToMs(r.time); }).filter(function(t){ return t!==null; }).sort(function(a,b){ return a-b; });
+            // 何位か（1始まり）
+            var rank = 1;
+            for(var t=0;t<times.length;t++){ if(newMs > times[t]) rank++; else break; }
+            display.style.transition='color 0.4s, box-shadow 0.4s';
+            if(rank===1){
+              display.style.color='#2a9d4e';
+              display.style.boxShadow='0 0 0 4px rgba(42,157,78,0.3)';
+            } else if(rank<=3){
+              display.style.color='#1d6fbf';
+              display.style.boxShadow='0 0 0 4px rgba(29,111,191,0.25)';
+            } else {
+              display.style.color='#d32';
+              display.style.boxShadow='0 0 0 4px rgba(211,50,34,0.25)';
+            }
+          }catch(e){ console.error(e); }
         }
 
         function update(){
@@ -211,9 +301,33 @@
         function startTimer(){
           hideForm();
           if(running) return;
-          running = true; startTime = Date.now(); display.textContent = '00:00.00';
-          startBtn.disabled = true; stopBtn.disabled = false; startBtn.classList.add('active');
-          rafId = requestAnimationFrame(update);
+          // カウントダウン 3→2→1→GO!
+          const overlay = document.getElementById('countdownOverlay');
+          const steps = ['3','2','1','GO!'];
+          let i = 0;
+          startBtn.disabled = true; stopBtn.disabled = true;
+          function showStep(){
+            if(i >= steps.length){
+              if(overlay) overlay.classList.add('hidden');
+              // 実際の計測開始
+              running = true; startTime = Date.now(); display.textContent = '00:00.00';
+              // タイマー色をリセット
+              display.style.color=''; display.style.boxShadow=''; display.style.transition='';
+              stopBtn.disabled = false; startBtn.classList.add('active');
+              rafId = requestAnimationFrame(update);
+              return;
+            }
+            if(overlay){
+              overlay.textContent = steps[i];
+              overlay.classList.remove('hidden','countdown-go');
+              if(steps[i]==='GO!') overlay.classList.add('countdown-go');
+              // アニメーションをリセットして再実行
+              overlay.style.animation='none'; overlay.offsetHeight; overlay.style.animation='';
+            }
+            i++;
+            setTimeout(showStep, steps[i-1]==='GO!' ? 600 : 900);
+          }
+          showStep();
         }
 
         function stopTimer(){
@@ -221,6 +335,8 @@
           running = false; if(rafId) cancelAnimationFrame(rafId);
           const elapsed = Date.now() - startTime; const formatted = formatTime(elapsed);
           display.textContent = formatted;
+          // 記録と比較して色を付ける
+          colorTimerByRank(formatted);
           startBtn.disabled = false; stopBtn.disabled = true; startBtn.classList.remove('active');
           // show registration form with measured time
           showForm(formatted);
@@ -246,15 +362,48 @@
         // Record form behavior
         function escapeHTML(s){ return String(s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
-        function loadRecords(){ try{ const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]'); renderRecords(arr); }catch(e){ console.error(e); }}
+        var currentSort = 'time'; // 'time' | 'date'
 
-        function renderRecords(arr){ if(!recordList) return; if(!arr || arr.length===0){ recordList.innerHTML = '<p class="muted">まだ記録がありません。</p>'; return; } recordList.innerHTML = arr.map(r=>{
-            return '<div class="record">'
-              + '<div class="r-time">'+escapeHTML(r.time)+'</div>'
-              + '<div class="r-meta">SN: '+escapeHTML(r.serial||'')+' / <strong>'+escapeHTML(r.nickname)+'</strong>' + (r.xid?(' / '+escapeHTML(r.xid)):'') + '</div>'
-              + (r.comment?('<div class="r-comment">'+escapeHTML(r.comment)+'</div>'):'')
-              + '</div>';
-          }).join(''); }
+        function padZ(n){ return String(n).padStart(2,'0'); }
+        function formatDate(ts){ if(!ts) return ''; var d=new Date(ts); return d.getFullYear()+'/'+padZ(d.getMonth()+1)+'/'+padZ(d.getDate())+' '+padZ(d.getHours())+':'+padZ(d.getMinutes()); }
+
+        function getSortedRecords(){
+          try{
+            var arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+            if(currentSort==='time'){
+              arr.sort(function(a,b){ var ta=timeToMs(a.time),tb=timeToMs(b.time); if(ta===null&&tb===null) return 0; if(ta===null) return 1; if(tb===null) return -1; return ta-tb; });
+            } else {
+              arr.sort(function(a,b){ return (a.created||0)-(b.created||0); });
+            }
+            return arr;
+          }catch(e){ return []; }
+        }
+
+        function loadRecords(){ renderRecords(getSortedRecords()); }
+
+        function renderRecords(arr){ if(!recordList) return; if(!arr||!arr.length){ recordList.innerHTML='<p class="muted">まだ記録がありません。</p>'; return; }
+          // ランク（時間昇順での順位）を計算
+          var byTime=arr.slice().sort(function(a,b){ var ta=timeToMs(a.time),tb=timeToMs(b.time); if(ta===null&&tb===null) return 0; if(ta===null) return 1; if(tb===null) return -1; return ta-tb; });
+          var rankMap={}; byTime.forEach(function(r,i){ rankMap[(r.created||'')+'_'+(r.serial||'')] = i+1; });
+          var rows=arr.map(function(r){
+            var key=(r.created||'')+'_'+(r.serial||'');
+            var rank=rankMap[key]||'-';
+            var rankLabel=rank===1?'🥇 1位':rank===2?'🥈 2位':rank===3?'🥉 3位':rank+'位';
+            var xid = (r.xid||'').replace(/^@/,'');
+            var avatarCell = xid && /^[a-zA-Z0-9_]{1,15}$/.test(xid)
+              ? '<td class="r-avatar"><img src="https://unavatar.io/x/'+escapeHTML(xid)+'" alt="'+escapeHTML(xid)+'" class="r-avatar-img" loading="lazy" onerror="this.style.display=\'none\'"></td>'
+              : '<td class="r-avatar"></td>';
+            return '<tr>'
+              +'<td class="r-rank">'+escapeHTML(rankLabel)+'</td>'
+              +'<td class="r-time">'+escapeHTML(r.time||'')+'</td>'
+              +avatarCell
+              +'<td>'+escapeHTML(r.nickname||'')+'</td>'
+              +'<td class="r-comment">'+escapeHTML(r.comment||'')+'</td>'
+              +'<td class="r-date">'+escapeHTML(formatDate(r.created))+'</td>'
+              +'</tr>';
+          }).join('');
+          recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>コメント</th><th>登録日時</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+        }
 
         if(recordForm){
           // toggle serial editability
@@ -262,7 +411,7 @@
 
           // enforce numeric-only input and limit length to 5
           if(recSerial){
-            recSerial.addEventListener('input', function(){ const s = this.value.replace(/\D/g,'').slice(0,5); if(this.value !== s) this.value = s; });
+            recSerial.addEventListener('input', function(){ const s = this.value.replace(/\D/g,'').slice(0,10); if(this.value !== s) this.value = s; });
           }
 
           recordForm.addEventListener('submit', function(e){
@@ -272,10 +421,21 @@
             // enforce serial required: must be exactly 5 digits
             const serialVal = recSerial ? recSerial.value.trim() : '';
             if(!serialVal){ alert('シリアルNoが未入力です。QRで読み取るか、チェックをONにして入力してください。'); if(recSerialEnable) recSerialEnable.focus(); return; }
-            if(!/^\d{5}$/.test(serialVal)){ alert('シリアルNoは5桁の数字で入力してください（例: 01234）。'); recSerial.focus(); return; }
+            if(!/^\d{10}$/.test(serialVal)){ alert('シリアルNoは10桁の数字で入力してください（例: 0123456789）。'); recSerial.focus(); return; }
 
             const rec = { time: measuredTimeInput.value || display.textContent, serial: serialVal, nickname: nick, xid: recXid.value.trim(), comment: recComment.value.trim(), created: Date.now() };
-            try{ const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]'); arr.unshift(rec); localStorage.setItem('ninket_records', JSON.stringify(arr)); renderRecords(arr); }catch(err){ console.error(err); }
+            try{
+              const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+              const existIdx = arr.findIndex(function(r){ return r.serial === serialVal; });
+              if(existIdx !== -1){
+                // 重複シリアル → 管理者パスワード確認
+                pendingRec = rec; pendingOverwriteIdx = existIdx;
+                adminPassInput.value = ''; adminPassError.classList.add('hidden');
+                adminModal.classList.remove('hidden'); adminPassInput.focus();
+                return;
+              }
+              arr.unshift(rec); localStorage.setItem('ninket_records', JSON.stringify(arr)); loadRecords();
+            }catch(err){ console.error(err); }
             recordForm.classList.add('hidden'); recordForm.reset();
             // after reset, keep serial disabled
             if(recSerial) recSerial.disabled = true; if(recSerialEnable) recSerialEnable.checked = false;
@@ -283,6 +443,35 @@
 
           cancelRecord.addEventListener('click', function(){ recordForm.classList.add('hidden'); });
         }
+
+        // ソートボタン
+        var sortByTimeBtn = document.getElementById('sortByTime');
+        var sortByDateBtn = document.getElementById('sortByDate');
+        if(sortByTimeBtn){ sortByTimeBtn.addEventListener('click', function(){ currentSort='time'; sortByTimeBtn.classList.add('active'); if(sortByDateBtn) sortByDateBtn.classList.remove('active'); loadRecords(); }); }
+        if(sortByDateBtn){ sortByDateBtn.addEventListener('click', function(){ currentSort='date'; sortByDateBtn.classList.add('active'); if(sortByTimeBtn) sortByTimeBtn.classList.remove('active'); loadRecords(); }); }
+
+        // 管理者パスワード確認の処理
+        if(adminPassOk){ adminPassOk.addEventListener('click', function(){
+          if(adminPassInput.value === ADMIN_PASS){
+            try{
+              const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+              if(pendingOverwriteIdx >= 0 && pendingOverwriteIdx < arr.length){
+                arr[pendingOverwriteIdx] = pendingRec;
+              } else { arr.unshift(pendingRec); }
+              localStorage.setItem('ninket_records', JSON.stringify(arr)); loadRecords();
+            }catch(e){ console.error(e); }
+            adminModal.classList.add('hidden');
+            recordForm.classList.add('hidden'); recordForm.reset();
+            if(recSerial) recSerial.disabled = true; if(recSerialEnable) recSerialEnable.checked = false;
+            pendingRec = null; pendingOverwriteIdx = -1;
+          } else {
+            adminPassError.classList.remove('hidden');
+            adminPassInput.value = ''; adminPassInput.focus();
+          }
+        }); }
+        if(adminPassCancel){ adminPassCancel.addEventListener('click', function(){
+          adminModal.classList.add('hidden'); pendingRec = null; pendingOverwriteIdx = -1;
+        }); }
 
         // QRスキャナ機能
         const qrScanBtn = document.getElementById('qrScanBtn');
@@ -324,8 +513,8 @@
           const raw = String(data).trim();
           if(!raw) return false;
           // 5桁の数字を優先、なければ先頭から最大5文字を設定
-          const matched = raw.match(/(\d{5})/);
-          const val = matched ? matched[1] : raw.slice(0, 5);
+          const matched = raw.match(/(\d{10})/);
+          const val = matched ? matched[1] : raw.slice(0, 10);
           if(recSerial){
             recSerial.value = val;
             recSerial.disabled = false;
