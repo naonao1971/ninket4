@@ -134,13 +134,15 @@
           <p>計測時間: <span class="measured-time">00:00.00</span></p>
           <input type="hidden" name="measuredTime" id="measuredTime">
           <div class="serial-row">
-            <label class="serial-label">シリアルNo（必須）</label>
-            <input id="recSerial" name="serial" type="text" inputmode="numeric" pattern="\d{5}" maxlength="5" placeholder="例: 01234" autocomplete="off" disabled>
-            <input id="recSerialEnable" class="serial-checkbox" type="checkbox" aria-label="編集可" title="編集可">
-            <button type="button" id="qrScanBtn" class="secondary">QR読み取り</button>
+            <label class="serial-label">シリアルNo <span class="required">＊</span></label>
+            <input id="recSerial" name="serial" type="text" inputmode="numeric" pattern="\d{5}" maxlength="5" placeholder="例: 01234" autocomplete="off" disabled aria-required="true">
+            <label class="serial-checkbox-label"><input id="recSerialEnable" class="serial-checkbox" type="checkbox" aria-label="編集可" title="編集可"> 編集</label>
           </div>
-          <label>ニックネーム（必須）<br>
-            <input id="recNick" name="nickname" type="text" required placeholder="表示名"></label>
+          <div class="qr-full-wrap">
+            <button type="button" id="qrScanBtn" class="secondary qr-full">QR読み取り</button>
+          </div>
+          <label>ニックネーム <span class="required">＊</span><br>
+            <input id="recNick" name="nickname" type="text" required placeholder="表示名" aria-required="true"></label>
           <label>XのユーザID（任意）<br>
             <input id="recXid" name="xid" type="text" placeholder="@username"></label>
           <label>コメント（任意）<br>
@@ -202,6 +204,8 @@
         function showForm(time){ if(!recordForm) return; measuredTimeLabel.textContent = time; measuredTimeInput.value = time; recordForm.classList.remove('hidden'); recordForm.scrollIntoView({behavior:'smooth',block:'center'}); 
           // If serial already has value (e.g. QR), keep disabled; else ensure disabled until user enables
           if(recSerial && recSerial.value.trim()){ recSerial.disabled = false; recSerialEnable.checked = true; } else { recSerial.disabled = true; recSerialEnable.checked = false; }
+          // adjust QR button width/position to match input
+          requestAnimationFrame(function(){ if(typeof adjustQRWidth === 'function') adjustQRWidth(); });
           recNick.focus(); }
 
         function startTimer(){
@@ -290,12 +294,16 @@
         const qrVideo = document.getElementById('qrVideo');
         const qrCanvas = document.getElementById('qrCanvas');
         const qrClose = document.getElementById('qrClose');
-        let qrStream = null; let qrReqId = null;
+        let qrStream = null; let qrReqId = null; let barcodeDetector = null;
 
         async function startScanner(){
           if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert('カメラにアクセスできません'); return; }
           qrModal.classList.remove('hidden');
           try{
+            // try to create BarcodeDetector if available
+            if(window.BarcodeDetector){
+              try{ barcodeDetector = new BarcodeDetector({formats:['qr_code']}); }catch(e){ barcodeDetector = null; }
+            }
             qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             qrVideo.srcObject = qrStream;
             qrVideo.play();
@@ -311,25 +319,37 @@
           qrModal.classList.add('hidden');
         }
 
+        function handleDetected(data){
+          if(!data) return false;
+          const matched = String(data).match(/(\d{5})/);
+          let val = '';
+          if(matched) val = matched[1]; else { const digits = String(data).replace(/\D/g,''); if(digits.length>=5) val = digits.slice(0,5); }
+          if(val){ if(recSerial){ recSerial.value = val; recSerial.disabled = false; } if(recSerialEnable){ recSerialEnable.checked = true; } stopScanner(); return true; }
+          return false;
+        }
+
         function tick(){
+          if(!qrVideo) return;
           if(qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA){ qrReqId = requestAnimationFrame(tick); return; }
+
+          // If BarcodeDetector is available, try it first (faster/more reliable on supported browsers)
+          if(barcodeDetector){
+            barcodeDetector.detect(qrVideo).then(codes=>{
+              if(codes && codes.length){
+                for(const c of codes){ if(c && c.rawValue && handleDetected(c.rawValue)) return; }
+              }
+              qrReqId = requestAnimationFrame(tick);
+            }).catch(err=>{ console.debug('BarcodeDetector error',err); qrReqId = requestAnimationFrame(tick); });
+            return;
+          }
+
           const w = qrVideo.videoWidth; const h = qrVideo.videoHeight;
           if(!w || !h){ qrReqId = requestAnimationFrame(tick); return; }
           qrCanvas.width = w; qrCanvas.height = h; const ctx = qrCanvas.getContext('2d'); ctx.drawImage(qrVideo,0,0,w,h);
           try{
             const imgData = ctx.getImageData(0,0,w,h);
             const code = jsQR(imgData.data, imgData.width, imgData.height);
-            if(code && code.data){
-              const matched = code.data.match(/(\d{5})/);
-              let val = '';
-              if(matched) val = matched[1]; else { const digits = code.data.replace(/\D/g,''); if(digits.length>=5) val = digits.slice(0,5); }
-              if(val){
-                if(recSerial){ recSerial.value = val; recSerial.disabled = false; }
-                if(recSerialEnable){ recSerialEnable.checked = true; }
-                stopScanner();
-                return;
-              }
-            }
+            if(code && code.data){ if(handleDetected(code.data)) return; }
           }catch(e){ console.error(e); }
           qrReqId = requestAnimationFrame(tick);
         }
@@ -337,8 +357,26 @@
         if(qrScanBtn){ qrScanBtn.addEventListener('click', function(){ startScanner(); }); }
         if(qrClose){ qrClose.addEventListener('click', function(){ stopScanner(); }); }
 
+        // adjust QR button to match input width/position
+        function adjustQRWidth(){
+          const input = document.getElementById('recSerial');
+          const btn = document.getElementById('qrScanBtn');
+          const wrap = document.querySelector('.qr-full-wrap');
+          if(!input || !btn || !wrap) return;
+          const rInput = input.getBoundingClientRect();
+          const rWrap = wrap.getBoundingClientRect();
+          const width = Math.max(64, Math.min(rInput.width, rWrap.width));
+          btn.style.width = width + 'px';
+          const leftOffset = Math.max(0, Math.round(rInput.left - rWrap.left));
+          btn.style.marginLeft = leftOffset + 'px';
+        }
+        window.addEventListener('resize', function(){ requestAnimationFrame(adjustQRWidth); });
+        window.addEventListener('orientationchange', function(){ setTimeout(adjustQRWidth,200); });
+
         // initialize
         loadRecords();
+        // initial adjust in case form already visible
+        requestAnimationFrame(adjustQRWidth);
       })();
     </script>
   </body>
