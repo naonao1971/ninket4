@@ -183,6 +183,9 @@
       <div class="container">
         <p>主催：NounsDaoJapan BlockArtWorkTM ⌐◨-◨<br>お問い合わせ: naoki.yokoo@gmail.com</p>
       </div>
+      <div>
+        <a href="https://lin.ee/RNc9h2Aj"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
+      </div>
     </footer>
     <section class="disclaimer container">
       <p><strong>注意：</strong>本イベントに展示するブロックアート作品は個人制作による非公式のファンメイド作品です。株式会社カワダ様の公式商品・公認商品ではありません。</p>
@@ -257,9 +260,12 @@
         async function verifyAdminPass(input){
           if(!window.ADMIN_PASS_HASH) return false;
           try{
-            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+            const normalizedInput = String(input || '').normalize('NFKC').trim();
+            const targetHash = String(window.ADMIN_PASS_HASH || '').trim().toLowerCase();
+            if(!normalizedInput || !targetHash) return false;
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalizedInput));
             const hex = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-            return hex === window.ADMIN_PASS_HASH;
+            return hex === targetHash;
           }catch(e){ console.error(e); return false; }
         }
         var pendingRec = null; var pendingOverwriteIdx = -1; var pendingAction = 'overwrite';
