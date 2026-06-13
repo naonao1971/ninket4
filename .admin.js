@@ -1,6 +1,6 @@
 // 管理者パスワードのSHA-256ハッシュ
 // パスワードを変更する場合: echo -n '新パスワード' | shasum -a 256
-window.ADMIN_PASS_HASH = 'c52b4b58d313a1eea3163de3f72d1658b91fb474992bf2b447777836e800286d';
+window.ADMIN_PASS_HASH = '54482595177116e6103b076dbf30648e5d0537dd1ed9cf5ae4562fa8a700d47b';
 
 // Google Apps Script デプロイURL
 // gas-code.gs をデプロイ後、取得したURLをここに設定してください

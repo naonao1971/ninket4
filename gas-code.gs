@@ -22,6 +22,10 @@ function initSheet() {
   }
 }
 
+function isValidSerial(value) {
+  return /^[A-Za-z0-9]{6}$/.test(String(value || '').trim());
+}
+
 // GET: 全記録を返す
 function doGet(e) {
   try {
@@ -50,21 +54,26 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var record = data && data.record ? data.record : null;
+
+    if ((data.action === 'add' || data.action === 'overwrite') && !isValidSerial(record && record.serial)) {
+      return jsonOut({ error: 'シリアルNoは半角英数字6文字で入力してください。' });
+    }
 
     // --- 新規追加 ---
     if (data.action === 'add') {
       var values = sheet.getDataRange().getValues();
       for (var i = 1; i < values.length; i++) {
-        if (String(values[i][1]) === String(data.record.serial)) {
+        if (String(values[i][1]) === String(record.serial)) {
           return jsonOut({ duplicate: true });
         }
       }
       sheet.appendRow([
-        data.record.time,
-        data.record.serial,
-        data.record.nickname,
-        data.record.xid || '',
-        new Date(data.record.created)
+        record.time,
+        record.serial,
+        record.nickname,
+        record.xid || '',
+        new Date(record.created)
       ]);
       return jsonOut({ success: true });
     }
@@ -73,24 +82,24 @@ function doPost(e) {
     if (data.action === 'overwrite') {
       var values = sheet.getDataRange().getValues();
       for (var i = 1; i < values.length; i++) {
-        if (String(values[i][1]) === String(data.record.serial)) {
+        if (String(values[i][1]) === String(record.serial)) {
           sheet.getRange(i + 1, 1, 1, 5).setValues([[
-            data.record.time,
-            data.record.serial,
-            data.record.nickname,
-            data.record.xid || '',
-            new Date(data.record.created)
+            record.time,
+            record.serial,
+            record.nickname,
+            record.xid || '',
+            new Date(record.created)
           ]]);
           return jsonOut({ success: true });
         }
       }
       // 見つからない場合は新規追加
       sheet.appendRow([
-        data.record.time,
-        data.record.serial,
-        data.record.nickname,
-        data.record.xid || '',
-        new Date(data.record.created)
+        record.time,
+        record.serial,
+        record.nickname,
+        record.xid || '',
+        new Date(record.created)
       ]);
       return jsonOut({ success: true });
     }

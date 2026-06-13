@@ -18,7 +18,7 @@
     <meta name="twitter:description" content="作って楽しい、飾って楽しい、集めて楽しい、競って楽しい — ナノブロック組立タイムトライアル" />
     <meta name="twitter:image" content="https://naonao1971.github.io/ninket4/images/banner.jpeg" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260613b">
   </head>
   <body>
     <header class="site-header">
@@ -138,7 +138,28 @@
 
       <section class="info">
         <h3>⏱️ タイムトライアル</h3>
-        <p>参加は簡単。準備ができたら、計測開始を押してください。制限時間は5分です。組立完了したら計測終了押してください。記録を登録できます。</p>
+        <p>参加は簡単。最初にシリアルNoとニックネームを入力してから計測開始を押してください。制限時間は5分です。組立完了したら計測終了を押して記録を登録できます。</p>
+        
+        <!-- 参加者情報入力セクション -->
+        <div class="participant-info">
+          <div class="serial-row">
+            <label class="serial-label">シリアルNo <span class="required">＊</span></label>
+            <input id="recSerial" name="serial" type="text" inputmode="text" pattern="[A-Za-z0-9]{6}" maxlength="6" placeholder="例: AB12C3" autocomplete="off" autocapitalize="off" spellcheck="false" disabled aria-required="true">
+            <label class="serial-checkbox-label"><input id="recSerialEnable" class="serial-checkbox" type="checkbox" aria-label="編集可" title="編集可"> 編集</label>
+            <button type="button" id="qrScanBtn" class="secondary qr-full">QR読み取り</button>
+          </div>
+          <div class="form-group">
+            <label for="recNick">ニックネーム <span class="required">＊</span></label>
+            <input id="recNick" name="nickname" type="text" required placeholder="表示名" aria-required="true">
+          </div>
+          <div class="form-group">
+            <label for="recXid">XのユーザID（任意）</label>
+            <input id="recXid" name="xid" type="text" placeholder="@username" autocomplete="off">
+            <div id="xidPreview" class="xid-preview hidden"></div>
+          </div>
+        </div>
+        
+        <!-- タイマーセクション -->
         <div class="timer">
           <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
           <div id="timerDisplay" class="timer-display" role="status" aria-live="polite">00:00.00</div>
@@ -147,23 +168,12 @@
           <button id="startBtn" class="secondary">計測開始</button>
           <button id="stopBtn" class="secondary" disabled>計測終了</button>
         </div>
-        <form id="recordForm" class="record-form hidden" novalidate>
+        
+        <!-- 記録登録フォーム -->
+        <form id="recordForm" class="record-form" novalidate>
           <h4>記録を登録する</h4>
           <p>計測時間: <span class="measured-time">00:00.00</span></p>
           <input type="hidden" name="measuredTime" id="measuredTime">
-          <div class="serial-row">
-            <label class="serial-label">シリアルNo <span class="required">＊</span></label>
-            <input id="recSerial" name="serial" type="text" inputmode="numeric" pattern="\d{10}" maxlength="10" placeholder="例: 0123456789" autocomplete="off" disabled aria-required="true">
-            <label class="serial-checkbox-label"><input id="recSerialEnable" class="serial-checkbox" type="checkbox" aria-label="編集可" title="編集可"> 編集</label>
-          </div>
-          <div class="qr-full-wrap">
-            <button type="button" id="qrScanBtn" class="secondary qr-full">QR読み取り</button>
-          </div>
-          <label>ニックネーム <span class="required">＊</span><br>
-            <input id="recNick" name="nickname" type="text" required placeholder="表示名" aria-required="true"></label>
-          <label>XのユーザID（任意）<br>
-            <input id="recXid" name="xid" type="text" placeholder="@username" autocomplete="off"></label>
-          <div id="xidPreview" class="xid-preview hidden"></div>
           <div class="form-actions">
             <button type="submit" class="secondary">登録する</button>
             <button type="button" id="cancelRecord" class="secondary">キャンセル</button>
@@ -334,11 +344,26 @@
           if(recSerial && recSerial.value.trim()){ recSerial.disabled = false; recSerialEnable.checked = true; } else { recSerial.disabled = true; recSerialEnable.checked = false; }
           // adjust QR button width/position to match input
           requestAnimationFrame(function(){ if(typeof adjustQRWidth === 'function') adjustQRWidth(); });
-          recNick.focus(); }
+          if(!time){ recNick.focus(); } }
+
+        function resetMeasuredTime(){
+          if(measuredTimeLabel) measuredTimeLabel.textContent = '00:00.00';
+          if(measuredTimeInput) measuredTimeInput.value = '';
+        }
+
+        function validateParticipantFields(){
+          const nick = recNick.value.trim();
+          if(!nick){ alert('ニックネームは必須です'); recNick.focus(); return false; }
+          const serialVal = recSerial ? recSerial.value.trim() : '';
+          if(!serialVal){ alert('シリアルNoが未入力です。QRで読み取るか、チェックをONにして入力してください。'); if(recSerialEnable) recSerialEnable.focus(); return false; }
+          if(!isValidSerial(serialVal)){ alert('シリアルNoは半角英数字6文字で入力してください（例: AB12C3）。'); recSerial.focus(); return false; }
+          return true;
+        }
 
         function startTimer(){
-          hideForm();
           if(running) return;
+          if(!validateParticipantFields()) return;
+          resetMeasuredTime();
           // カウントダウン 3→2→1→GO!
           const overlay = document.getElementById('countdownOverlay');
           const steps = ['3','2','1','GO!'];
@@ -376,8 +401,9 @@
           // 記録と比較して色を付ける
           colorTimerByRank(formatted);
           startBtn.disabled = false; stopBtn.disabled = true; startBtn.classList.remove('active');
-          // show registration form with measured time
-          showForm(formatted);
+          if(measuredTimeLabel) measuredTimeLabel.textContent = formatted;
+          if(measuredTimeInput) measuredTimeInput.value = formatted;
+          recordForm.scrollIntoView({behavior:'smooth',block:'center'});
         }
 
         startBtn.addEventListener('click', startTimer);
@@ -457,7 +483,17 @@
               +'<td class="r-del"><input type="checkbox" class="del-chk" data-serial="'+escapeHTML(r.serial||'')+'" title="削除"></td>'
               +'</tr>';
           }).join('');
-          recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>登録日時</th><th>シリアルNo</th><th class="r-del">削除</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+          recordList.innerHTML='<div class="record-table-wrap"><table class="record-table"><thead><tr><th>順位</th><th>記録</th><th></th><th>ニックネーム</th><th>登録日時</th><th class="r-serial">シリアルNo</th><th class="r-del">削除</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+        }
+
+        function showRegistrationPasswordModal(rec){
+          pendingAction = 'add';
+          pendingRec = rec; pendingOverwriteIdx = -1;
+          if(adminModalTitle) adminModalTitle.textContent = '登録確認';
+          if(adminModalDesc) adminModalDesc.innerHTML = 'この記録を登録します。<br>管理者パスワードを入力してください。';
+          if(adminPassOk) adminPassOk.textContent = '登録する';
+          adminPassInput.value = ''; adminPassError.classList.add('hidden');
+          adminModal.classList.remove('hidden'); adminPassInput.focus();
         }
 
         function showDuplicateModal(rec, idx){
@@ -481,60 +517,74 @@
         }
 
         function afterFormSave(){
-          recordForm.classList.add('hidden'); recordForm.reset();
-          if(recSerial) recSerial.disabled = true; if(recSerialEnable) recSerialEnable.checked = false;
+          recordForm.reset();
+          resetMeasuredTime();
+          if(recSerial) recSerial.disabled = true;
+          if(recSerialEnable) recSerialEnable.checked = false;
           if(xidPreview) xidPreview.className = 'xid-preview hidden';
+          if(!running){ display.textContent = '00:00.00'; display.style.color = ''; display.style.boxShadow = ''; display.style.transition = ''; }
+          showForm('');
           loadRecords();
         }
 
+        function sanitizeSerial(value){
+          return String(value || '').replace(/[^A-Za-z0-9]/g,'').slice(0,6);
+        }
+
+        function isValidSerial(value){
+          return /^[A-Za-z0-9]{6}$/.test(String(value || '').trim());
+        }
+
+        // 非表示スタイルをJavaScriptで追加（CSSフォールバック）
+        const hideSerialStyle = document.createElement('style');
+        hideSerialStyle.textContent = '.record-table .r-serial { display: none !important; }';
+        document.head.appendChild(hideSerialStyle);
+
+        // participant-infoレイアウトスタイルを明示的に設定
+        const participantLayoutStyle = document.createElement('style');
+        participantLayoutStyle.textContent = `
+          .participant-info { display: flex !important; flex-direction: column !important; }
+          .participant-info .form-group { display: flex !important; flex-direction: column !important; width: 100%; margin-bottom: 12px; }
+          .participant-info .form-group label { display: block !important; width: 100% !important; margin-bottom: 4px; }
+        `;
+        document.head.appendChild(participantLayoutStyle);
+
         if(recordForm){
+          showForm('');
           // toggle serial editability
           if(recSerialEnable){ recSerialEnable.addEventListener('change', function(){ if(recSerial) recSerial.disabled = !this.checked; if(this.checked) recSerial.focus(); }); }
 
-          // enforce numeric-only input and limit length to 5
+          // enforce half-width alphanumeric input and limit length to 6
           if(recSerial){
-            recSerial.addEventListener('input', function(){ const s = this.value.replace(/\D/g,'').slice(0,10); if(this.value !== s) this.value = s; });
+            recSerial.addEventListener('input', function(){ const s = sanitizeSerial(this.value); if(this.value !== s) this.value = s; });
           }
 
           recordForm.addEventListener('submit', function(e){
             e.preventDefault();
+            if(!measuredTimeInput.value){ alert('先に計測を開始して終了してください。'); startBtn.focus(); return; }
+            if(!validateParticipantFields()) return;
             const nick = recNick.value.trim();
-            if(!nick){ alert('ニックネームは必須です'); recNick.focus(); return; }
-            // enforce serial required: must be exactly 5 digits
             const serialVal = recSerial ? recSerial.value.trim() : '';
-            if(!serialVal){ alert('シリアルNoが未入力です。QRで読み取るか、チェックをONにして入力してください。'); if(recSerialEnable) recSerialEnable.focus(); return; }
-            if(!/^\d{10}$/.test(serialVal)){ alert('シリアルNoは10桁の数字で入力してください（例: 0123456789）。'); recSerial.focus(); return; }
 
             const rec = { time: measuredTimeInput.value || display.textContent, serial: serialVal, nickname: nick, xid: recXid.value.trim(), created: Date.now() };
-            if(window.GAS_URL){
-              fetch(window.GAS_URL, {method:'POST', body:JSON.stringify({action:'add',record:rec})})
-                .then(function(r){ return r.json(); })
-                .then(function(d){
-                  if(d.duplicate){ showDuplicateModal(rec); return; }
-                  if(d.success){ afterFormSave(); } else { alert('登録に失敗しました: '+(d.error||'')); }
-                })
-                .catch(function(e){ alert('通信エラー: '+e.message); });
-            } else {
-              try{
-                const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
-                const existIdx = arr.findIndex(function(r){ return r.serial === serialVal; });
-                if(existIdx !== -1){ showDuplicateModal(rec, existIdx); return; }
-                arr.unshift(rec); localStorage.setItem('ninket_records', JSON.stringify(arr));
-              }catch(err){ console.error(err); }
-              afterFormSave();
-            }
+            // パスワード入力モーダルを表示
+            showRegistrationPasswordModal(rec);
           });
 
           cancelRecord.addEventListener('click', function(){
-            recordForm.classList.add('hidden');
             recordForm.reset();
+            resetMeasuredTime();
+            // 参加者入力を初期状態へ戻す
+            if(recNick){ recNick.value = ''; recNick.style.boxShadow = ''; }
+            if(recXid){ recXid.value = ''; recXid.style.boxShadow = ''; }
+            if(recSerial){ recSerial.value = ''; recSerial.disabled = true; recSerial.style.boxShadow = ''; }
             // シリアル入力を無効化に戻す
-            if(recSerial){ recSerial.disabled = true; recSerial.style.boxShadow = ''; }
             if(recSerialEnable) recSerialEnable.checked = false;
             // XIDプレビューを非表示
-            if(xidPreview) xidPreview.className = 'xid-preview hidden';
+            if(xidPreview){ xidPreview.className = 'xid-preview hidden'; xidPreview.innerHTML = ''; }
             // タイマー表示を初期化
             if(!running){ display.textContent = '00:00.00'; display.style.color = ''; display.style.boxShadow = ''; display.style.transition = ''; }
+            if(recNick) recNick.focus();
           });
         }
 
@@ -557,7 +607,28 @@
             if(adminModalTitle) adminModalTitle.textContent = '上書き確認';
             if(adminModalDesc) adminModalDesc.innerHTML = 'このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。';
             if(adminPassOk) adminPassOk.textContent = '上書きする';
-            if(action === 'delete'){
+            if(action === 'add'){
+              // 新規登録処理
+              if(!rec) return;
+              const serialVal = rec.serial;
+              if(window.GAS_URL){
+                fetch(window.GAS_URL, {method:'POST', body:JSON.stringify({action:'add',record:rec})})
+                  .then(function(r){ return r.json(); })
+                  .then(function(d){
+                    if(d.duplicate){ showDuplicateModal(rec); return; }
+                    if(d.success){ afterFormSave(); } else { alert('登録に失敗しました: '+(d.error||'')); }
+                  })
+                  .catch(function(e){ alert('通信エラー: '+e.message); });
+              } else {
+                try{
+                  const arr = JSON.parse(localStorage.getItem('ninket_records')||'[]');
+                  const existIdx = arr.findIndex(function(r){ return r.serial === serialVal; });
+                  if(existIdx !== -1){ showDuplicateModal(rec, existIdx); return; }
+                  arr.unshift(rec); localStorage.setItem('ninket_records', JSON.stringify(arr));
+                }catch(err){ console.error(err); }
+                afterFormSave();
+              }
+            } else if(action === 'delete'){
               const serial = rec ? rec.serial : null;
               if(!serial){ loadRecords(); return; }
               if(window.GAS_URL){
@@ -599,6 +670,7 @@
           if(adminModalTitle) adminModalTitle.textContent = '上書き確認';
           if(adminModalDesc) adminModalDesc.innerHTML = 'このシリアルNoはすでに登録されています。<br>上書きするには管理者パスワードを入力してください。';
           if(adminPassOk) adminPassOk.textContent = '上書きする';
+          adminPassError.classList.add('hidden');
         }); }
 
         // QRスキャナ機能
@@ -640,9 +712,9 @@
           if(!data) return false;
           const raw = String(data).trim();
           if(!raw) return false;
-          // 5桁の数字を優先、なければ先頭から最大5文字を設定
-          const matched = raw.match(/(\d{10})/);
-          const val = matched ? matched[1] : raw.slice(0, 10);
+          // 半角英数字6文字を優先し、見つからなければ英数字だけを詰めて先頭6文字を使う
+          const matched = raw.match(/([A-Za-z0-9]{6})/);
+          const val = matched ? matched[1] : sanitizeSerial(raw);
           if(recSerial){
             recSerial.value = val;
             recSerial.disabled = false;
