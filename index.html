@@ -342,7 +342,7 @@
         }
 
         function hideForm(){ if(recordForm){ recordForm.classList.add('hidden'); } }
-        function showForm(time){ if(!recordForm) return; measuredTimeLabel.textContent = time; measuredTimeInput.value = time; recordForm.classList.remove('hidden'); recordForm.scrollIntoView({behavior:'smooth',block:'center'}); 
+        function showForm(time, skipScroll){ if(!recordForm) return; measuredTimeLabel.textContent = time; measuredTimeInput.value = time; recordForm.classList.remove('hidden'); if(!skipScroll) recordForm.scrollIntoView({behavior:'smooth',block:'center'}); 
           // If serial already has value (e.g. QR), keep disabled; else ensure disabled until user enables
           if(recSerial && recSerial.value.trim()){ recSerial.disabled = false; recSerialEnable.checked = true; } else { recSerial.disabled = true; recSerialEnable.checked = false; }
           // adjust QR button width/position to match input
@@ -407,7 +407,7 @@
           startBtn.disabled = false; stopBtn.disabled = true; startBtn.classList.remove('active');
           if(measuredTimeLabel) measuredTimeLabel.textContent = formatted;
           if(measuredTimeInput) measuredTimeInput.value = formatted;
-          recordForm.scrollIntoView({behavior:'smooth',block:'center'});
+          if(!skipScroll) recordForm.scrollIntoView({behavior:'smooth',block:'center'});
         }
 
         startBtn.addEventListener('click', startTimer);
@@ -527,7 +527,7 @@
           if(recSerialEnable) recSerialEnable.checked = false;
           if(xidPreview) xidPreview.className = 'xid-preview hidden';
           if(!running){ display.textContent = '00:00.00'; display.style.color = ''; display.style.boxShadow = ''; display.style.transition = ''; }
-          showForm('');
+          showForm('', true);
           loadRecords();
         }
 
@@ -555,7 +555,7 @@
         document.head.appendChild(participantLayoutStyle);
 
         if(recordForm){
-          showForm('');
+          showForm('', true);
           // toggle serial editability
           if(recSerialEnable){ recSerialEnable.addEventListener('change', function(){ if(recSerial) recSerial.disabled = !this.checked; if(this.checked) recSerial.focus(); }); }
 
