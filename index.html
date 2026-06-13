@@ -18,7 +18,7 @@
     <meta name="twitter:description" content="作って楽しい、飾って楽しい、集めて楽しい、競って楽しい — ナノブロック組立タイムトライアル" />
     <meta name="twitter:image" content="https://naonao1971.github.io/ninket4/images/banner.jpeg" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260614a">
+    <link rel="stylesheet" href="styles.css?v=20260614d">
   </head>
   <body>
     <header class="site-header">
@@ -136,7 +136,8 @@
         <p>参加は簡単。最初にシリアルNoをチケットのQRコードから読み取り、ニックネームを入力してから計測開始を押してください。制限時間は5分です。組立完了したら計測終了を押して記録を登録できます。</p>
         
         <!-- 参加者情報入力セクション -->
-        <div class="participant-info">
+        <button type="button" id="participantToggle" class="participant-toggle">参加者情報を入力する <span id="participantToggleIcon">▼</span></button>
+        <div class="participant-info" id="participantInfoDrawer">
           <div class="serial-row">
             <label class="serial-label">シリアルNo <span class="required">＊</span></label>
             <input id="recSerial" name="serial" type="text" inputmode="text" pattern="[A-Za-z0-9]{6}" maxlength="6" placeholder="例: AB12C3" autocomplete="off" autocapitalize="off" spellcheck="false" disabled aria-required="true">
@@ -152,28 +153,28 @@
             <input id="recXid" name="xid" type="text" placeholder="@username" autocomplete="off">
             <div id="xidPreview" class="xid-preview hidden"></div>
           </div>
-        </div>
         
-        <!-- タイマーセクション -->
-        <div class="timer">
-          <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
-          <div id="timerDisplay" class="timer-display" role="status" aria-live="polite">00:00.00</div>
-        </div>
-        <div class="buttons">
-          <button id="startBtn" class="secondary">計測開始</button>
-          <button id="stopBtn" class="secondary" disabled>計測終了</button>
-        </div>
-        
-        <!-- 記録登録フォーム -->
-        <form id="recordForm" class="record-form" novalidate>
-          <h4>記録を登録する</h4>
-          <p>計測時間: <span class="measured-time">00:00.00</span></p>
-          <input type="hidden" name="measuredTime" id="measuredTime">
-          <div class="form-actions">
-            <button type="submit" class="secondary">登録する</button>
-            <button type="button" id="cancelRecord" class="secondary">キャンセル</button>
+          <!-- タイマーセクション -->
+          <div class="timer">
+            <div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"></div>
+            <div id="timerDisplay" class="timer-display" role="status" aria-live="polite">00:00.00</div>
           </div>
-        </form>
+          <div class="buttons">
+            <button id="startBtn" class="secondary">計測開始</button>
+            <button id="stopBtn" class="secondary" disabled>計測終了</button>
+          </div>
+        
+          <!-- 記録登録フォーム -->
+          <form id="recordForm" class="record-form" novalidate>
+            <h4>記録を登録する</h4>
+            <p>計測時間: <span class="measured-time">00:00.00</span></p>
+            <input type="hidden" name="measuredTime" id="measuredTime">
+            <div class="form-actions">
+              <button type="submit" class="secondary">登録する</button>
+              <button type="button" id="cancelRecord" class="secondary">キャンセル</button>
+            </div>
+          </form>
+        </div>
 
         <div class="records-sort-bar">
           <span class="sort-label">並び替え：</span>
@@ -346,7 +347,7 @@
           if(recSerial && recSerial.value.trim()){ recSerial.disabled = false; recSerialEnable.checked = true; } else { recSerial.disabled = true; recSerialEnable.checked = false; }
           // adjust QR button width/position to match input
           requestAnimationFrame(function(){ if(typeof adjustQRWidth === 'function') adjustQRWidth(); });
-          if(!time){ recNick.focus(); } }
+          }
 
         function resetMeasuredTime(){
           if(measuredTimeLabel) measuredTimeLabel.textContent = '00:00.00';
@@ -364,6 +365,7 @@
 
         function startTimer(){
           if(running) return;
+          openParticipantDrawer();
           if(!validateParticipantFields()) return;
           resetMeasuredTime();
           // カウントダウン 3→2→1→GO!
@@ -545,9 +547,10 @@
         // participant-infoレイアウトスタイルを明示的に設定
         const participantLayoutStyle = document.createElement('style');
         participantLayoutStyle.textContent = `
-          .participant-info { display: flex !important; flex-direction: column !important; }
-          .participant-info .form-group { display: flex !important; flex-direction: column !important; width: 100%; margin-bottom: 12px; }
-          .participant-info .form-group label { display: block !important; width: 100% !important; margin-bottom: 4px; }
+          .participant-info { display: flex; flex-direction: column; }
+          .participant-info.hidden { display: none !important; }
+          .participant-info .form-group { display: flex; flex-direction: column; width: 100%; margin-bottom: 12px; }
+          .participant-info .form-group label { display: block; width: 100%; margin-bottom: 4px; }
         `;
         document.head.appendChild(participantLayoutStyle);
 
@@ -674,6 +677,34 @@
           if(adminPassOk) adminPassOk.textContent = '上書きする';
           adminPassError.classList.add('hidden');
         }); }
+
+        // 参加者情報ドロアー
+        function openParticipantDrawer(){
+          var d = document.getElementById('participantInfoDrawer');
+          var icon = document.getElementById('participantToggleIcon');
+          var btn = document.getElementById('participantToggle');
+          if(d) d.classList.remove('hidden');
+          if(icon) icon.textContent = '▲';
+          if(btn) btn.classList.add('drawer-open');
+        }
+        function closeParticipantDrawer(){
+          var d = document.getElementById('participantInfoDrawer');
+          var icon = document.getElementById('participantToggleIcon');
+          var btn = document.getElementById('participantToggle');
+          if(d) d.classList.add('hidden');
+          if(icon) icon.textContent = '▼';
+          if(btn) btn.classList.remove('drawer-open');
+        }
+        var _pToggle = document.getElementById('participantToggle');
+        if(_pToggle){
+          _pToggle.addEventListener('click', function(){
+            var d = document.getElementById('participantInfoDrawer');
+            if(d && d.classList.contains('hidden')){ openParticipantDrawer(); } else { closeParticipantDrawer(); }
+          });
+        }
+        // 初期状態で参加者情報を非表示に
+        var _initialDrawer = document.getElementById('participantInfoDrawer');
+        if(_initialDrawer) _initialDrawer.classList.add('hidden');
 
         // QRスキャナ機能
         const qrScanBtn = document.getElementById('qrScanBtn');
