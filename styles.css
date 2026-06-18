@@ -97,6 +97,11 @@ button:disabled{
 .prize p{margin:0;color:var(--muted)}
 .prize-media{display:flex;justify-content:center;margin:10px 0 12px}
 .prize-media img{max-width:336px;width:80%;height:auto;margin:0 auto;display:block;border-radius:10px;box-shadow:0 8px 24px rgba(38,50,56,0.08)}
+.product{margin-bottom:18px;background:linear-gradient(90deg,rgba(230,255,240,0.6),rgba(255,248,220,0.6));padding:14px;border-radius:10px;border-left:4px solid #4caf88}
+.product h3{margin:0 0 6px}
+.product p{margin:4px 0;color:var(--muted)}
+.product-archive{margin-top:12px !important}
+.product-archive a{color:#0066cc;text-decoration:underline;font-weight:700}
 .topic{margin-top:12px}
 .topic-media{display:flex;justify-content:center;margin:8px 0}
 .topic-media img{max-width:294px;width:70%;height:auto;margin:0 auto;display:block;border-radius:10px;box-shadow:0 6px 18px rgba(38,50,56,0.06)}
